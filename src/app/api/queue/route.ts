@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logEvent, write, ymd } from "@/lib/db";
+import { frag, logEvent, tx, ymd } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,26 +22,27 @@ export async function POST(req: Request) {
   const date = ymd(body.date) ?? tomorrow();
 
   try {
-    const seq = write((conn) => {
-      const row = conn
-        .prepare("SELECT COALESCE(MAX(batch_seq),0)+1 n FROM pipeline WHERE batch_date=?")
-        .get(date) as { n: number };
+    const seq = await tx(async (q) => {
+      const row = (await q.one<{ n: number }>(
+        "SELECT COALESCE(MAX(batch_seq),0)+1 n FROM pipeline WHERE batch_date=?",
+        [date],
+      ))!;
       let persona = typeof body.persona === "string" && body.persona ? body.persona : null;
       if (!persona) {
-        const best = conn
-          .prepare("SELECT persona FROM fit WHERE sponsor_id=? ORDER BY score DESC LIMIT 1")
-          .get(id) as { persona: string } | undefined;
+        const best = await q.one<{ persona: string }>(
+          "SELECT persona FROM fit WHERE sponsor_id=? ORDER BY score DESC LIMIT 1",
+          [id],
+        );
         persona = best?.persona ?? null;
       }
-      conn.prepare("INSERT OR IGNORE INTO pipeline (sponsor_id) VALUES (?)").run(id);
-      conn
-        .prepare(
-          `UPDATE pipeline SET batch_date=?, batch_seq=?, persona=COALESCE(persona,?),
-                  status=COALESCE(NULLIF(status,''),'queued') WHERE sponsor_id=?`,
-        )
-        .run(date, row.n, persona, id);
-      logEvent(conn, id, "queue", date);
-      return row.n;
+      await q.run(frag.insertIgnorePipeline(), [id]);
+      await q.run(
+        `UPDATE pipeline SET batch_date=?, batch_seq=?, persona=COALESCE(persona,?),
+                status=COALESCE(NULLIF(status,''),'queued') WHERE sponsor_id=?`,
+        [date, Number(row.n), persona, id],
+      );
+      await logEvent(q, id, "queue", date);
+      return Number(row.n);
     });
     return NextResponse.json({ ok: true, id, date, seq });
   } catch (err) {

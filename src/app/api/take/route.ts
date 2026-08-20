@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logEvent, write, ymd } from "@/lib/db";
+import { frag, logEvent, tx, ymd } from "@/lib/db";
 import { personas } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -18,43 +18,41 @@ export async function POST(req: Request) {
 
   const n = Math.max(1, Math.min(200, Number(body.n) || 10));
   const persona = typeof body.persona === "string" ? body.persona : "";
-  if (!personas().includes(persona)) {
+  if (!(await personas()).includes(persona)) {
     return NextResponse.json({ error: `Unknown persona: ${persona || "(none)"}` }, { status: 400 });
   }
   const date = ymd(body.date) ?? tomorrow();
 
   try {
-    const added = write((conn) => {
-      const candidates = conn
-        .prepare(
-          `SELECT s.sponsor_id id, f.score FROM sponsors s
-             JOIN fit f USING(sponsor_id)
-             LEFT JOIN pipeline p USING(sponsor_id)
-             LEFT JOIN enrichment e USING(sponsor_id)
-            WHERE f.persona=? AND s.has_skilled_worker=1 AND s.is_franchise=0
-              AND s.is_canonical=1 AND p.sponsor_id IS NULL
-              AND (e.ch_status IS NULL OR e.ch_status='Active')
-              AND (e.ch_size_band IS NULL OR e.ch_size_band<>'dormant')
-            ORDER BY f.score DESC, (s.sponsor_id*2654435761)%1000003 LIMIT ?`,
-        )
-        .all(persona, n) as { id: number; score: number }[];
-
-      let seq = (
-        conn.prepare("SELECT COALESCE(MAX(batch_seq),0) n FROM pipeline WHERE batch_date=?").get(date) as {
-          n: number;
-        }
-      ).n;
-
-      const ins = conn.prepare("INSERT OR IGNORE INTO pipeline (sponsor_id) VALUES (?)");
-      const upd = conn.prepare(
-        `UPDATE pipeline SET batch_date=?, batch_seq=?, persona=?, priority=?, status='queued'
-          WHERE sponsor_id=?`,
+    const added = await tx(async (q) => {
+      const candidates = await q.all<{ id: number; score: number }>(
+        `SELECT s.sponsor_id id, f.score FROM sponsors s
+           JOIN fit f USING(sponsor_id)
+           LEFT JOIN pipeline p USING(sponsor_id)
+           LEFT JOIN enrichment e USING(sponsor_id)
+          WHERE f.persona=? AND s.has_skilled_worker=1 AND s.is_franchise=0
+            AND s.is_canonical=1 AND p.sponsor_id IS NULL
+            AND (e.ch_status IS NULL OR e.ch_status='Active')
+            AND (e.ch_size_band IS NULL OR e.ch_size_band<>'dormant')
+          ORDER BY f.score DESC, ${frag.shuffle("s.sponsor_id")} LIMIT ?`,
+        [persona, n],
       );
+
+      let seq = Number(
+        (await q.one<{ n: number }>("SELECT COALESCE(MAX(batch_seq),0) n FROM pipeline WHERE batch_date=?", [
+          date,
+        ]))!.n,
+      );
+
       for (const c of candidates) {
         seq += 1;
-        ins.run(c.id);
-        upd.run(date, seq, persona, c.score, c.id);
-        logEvent(conn, c.id, "queue", date);
+        await q.run(frag.insertIgnorePipeline(), [c.id]);
+        await q.run(
+          `UPDATE pipeline SET batch_date=?, batch_seq=?, persona=?, priority=?, status='queued'
+            WHERE sponsor_id=?`,
+          [date, seq, persona, c.score, c.id],
+        );
+        await logEvent(q, c.id, "queue", date);
       }
       return candidates.length;
     });

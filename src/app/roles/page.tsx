@@ -12,10 +12,10 @@ export default async function RolesPage({
   searchParams: Promise<{ persona?: string; uk?: string }>;
 }) {
   const params = await searchParams;
-  const list = personas();
+  const list = await personas();
   const persona = params.persona && list.includes(params.persona) ? params.persona : "";
   const includeNonUk = params.uk === "all";
-  const rows = roles({ persona: persona || undefined, includeNonUk });
+  const rows = await roles({ persona: persona || undefined, includeNonUk });
 
   return (
     <>

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local overrides
 .env*.local
+
+# but do ship the template
+!.env.example

@@ -14,11 +14,11 @@ export default async function PoolPage({
   searchParams: Promise<{ persona?: string; country?: string; limit?: string }>;
 }) {
   const params = await searchParams;
-  const list = personas();
+  const list = await personas();
   const persona = params.persona && list.includes(params.persona) ? params.persona : list[0];
   const country = params.country || "";
   const limit = Math.min(500, Math.max(1, Number(params.limit) || 100));
-  const rows = pool(persona, { country: country || undefined, limit });
+  const rows = await pool(persona, { country: country || undefined, limit });
 
   return (
     <>

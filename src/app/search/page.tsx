@@ -18,7 +18,7 @@ export default async function SearchPage({
 }) {
   const params = await searchParams;
   const q = (params.q || "").trim();
-  const rows = q ? search(q) : [];
+  const rows = q ? await search(q) : [];
 
   return (
     <>

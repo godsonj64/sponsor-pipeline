@@ -13,9 +13,9 @@ export default async function BatchPage({
   searchParams: Promise<{ date?: string }>;
 }) {
   const params = await searchParams;
-  const dates = batchDates();
+  const dates = await batchDates();
   const date = ymd(params.date) ?? dates[0]?.d ?? today();
-  const rows = batch(date);
+  const rows = await batch(date);
 
   return (
     <>

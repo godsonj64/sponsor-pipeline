@@ -10,7 +10,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if (!Number.isInteger(n) || n <= 0) {
     return NextResponse.json({ error: "A numeric sponsor id is required." }, { status: 400 });
   }
-  const row = sponsor(n);
+  const row = await sponsor(n);
   if (!row) return NextResponse.json({ error: "Sponsor not found." }, { status: 404 });
   return NextResponse.json(row);
 }

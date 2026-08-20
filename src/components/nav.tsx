@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/ui/icons";
 
 const LINKS = [
@@ -13,9 +13,13 @@ const LINKS = [
   { href: "/search", label: "Search" },
 ];
 
-export function Nav() {
+export function Nav({ locked = false }: { locked?: boolean }) {
   const path = usePathname();
+  const router = useRouter();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+
+  // Signed-out visitors get the login screen alone, with no app chrome.
+  if (path === "/login") return null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-white/85 backdrop-blur-xl">
@@ -42,6 +46,18 @@ export function Nav() {
         <a href="/api/export?what=applications" className="btn btn-light ml-auto shrink-0">
           Export CSV
         </a>
+        {locked && (
+          <button
+            onClick={async () => {
+              await fetch("/api/auth", { method: "DELETE" });
+              router.push("/login");
+              router.refresh();
+            }}
+            className="btn btn-light shrink-0"
+          >
+            Sign out
+          </button>
+        )}
       </div>
     </header>
   );

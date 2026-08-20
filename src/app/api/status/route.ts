@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isStatus, logEvent, today, write, STATUSES } from "@/lib/db";
+import { frag, isStatus, logEvent, today, tx, STATUSES } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,20 +22,22 @@ export async function POST(req: Request) {
   const status = body.status;
 
   try {
-    write((conn) => {
-      conn.prepare("INSERT OR IGNORE INTO pipeline (sponsor_id) VALUES (?)").run(id);
+    await tx(async (q) => {
+      await q.run(frag.insertIgnorePipeline(), [id]);
       if (status === "applied") {
-        conn
-          .prepare("UPDATE pipeline SET status=?, applied_at=COALESCE(applied_at,?) WHERE sponsor_id=?")
-          .run(status, today(), id);
+        await q.run("UPDATE pipeline SET status=?, applied_at=COALESCE(applied_at,?) WHERE sponsor_id=?", [
+          status,
+          today(),
+          id,
+        ]);
       } else if (status === "queued" || status === "researched" || status === "drafted") {
         // Moving back before "sent" clears the sent date, or the follow-up
         // tracker chases an application that was never actually made.
-        conn.prepare("UPDATE pipeline SET status=?, applied_at=NULL WHERE sponsor_id=?").run(status, id);
+        await q.run("UPDATE pipeline SET status=?, applied_at=NULL WHERE sponsor_id=?", [status, id]);
       } else {
-        conn.prepare("UPDATE pipeline SET status=? WHERE sponsor_id=?").run(status, id);
+        await q.run("UPDATE pipeline SET status=? WHERE sponsor_id=?", [status, id]);
       }
-      logEvent(conn, id, "status", status);
+      await logEvent(q, id, "status", status);
     });
   } catch (err) {
     console.error("[status]", err);

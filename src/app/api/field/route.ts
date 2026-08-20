@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logEvent, write } from "@/lib/db";
+import { frag, logEvent, tx } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,10 +36,10 @@ export async function POST(req: Request) {
   const value = raw === null || raw === undefined || raw === "" ? null : String(raw).slice(0, 4000);
 
   try {
-    write((conn) => {
-      conn.prepare("INSERT OR IGNORE INTO pipeline (sponsor_id) VALUES (?)").run(id);
-      conn.prepare(`UPDATE pipeline SET ${field}=? WHERE sponsor_id=?`).run(value, id);
-      logEvent(conn, id, "field", `${field}=${(value ?? "").slice(0, 120)}`);
+    await tx(async (q) => {
+      await q.run(frag.insertIgnorePipeline(), [id]);
+      await q.run(`UPDATE pipeline SET ${field}=? WHERE sponsor_id=?`, [value, id]);
+      await logEvent(q, id, "field", `${field}=${(value ?? "").slice(0, 120)}`);
     });
   } catch (err) {
     console.error("[field]", err);

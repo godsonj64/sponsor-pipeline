@@ -16,7 +16,7 @@ export default async function FollowupsPage({
 }) {
   const params = await searchParams;
   const days = Math.min(90, Math.max(1, Number(params.days) || 10));
-  const rows = followups(days);
+  const rows = await followups(days);
 
   return (
     <>

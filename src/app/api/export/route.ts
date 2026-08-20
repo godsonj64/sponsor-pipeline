@@ -1,4 +1,4 @@
-import { all, today, ymd } from "@/lib/db";
+import { all, frag, today, ymd } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   let filename: string;
 
   if (what === "applications") {
-    rows = all(
+    rows = await all(
       `SELECT s.sponsor_id, s.org_name, s.town, s.industry, e.ch_company_number, e.website,
               p.persona, p.status, p.role_target, p.application_url, p.contact_email,
               p.applied_at, p.notes
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     );
     filename = "applications.csv";
   } else if (what === "roles") {
-    rows = all(
+    rows = await all(
       `SELECT s.org_name, v.title, v.persona, v.match_score, v.location, v.in_uk, v.source, v.url
          FROM vacancies v JOIN sponsors s USING(sponsor_id)
         WHERE v.persona IS NOT NULL ORDER BY v.match_score DESC, s.org_name`,
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     filename = "roles.csv";
   } else if (what === "batch") {
     const date = ymd(url.searchParams.get("date")) ?? today();
-    rows = all(
+    rows = await all(
       `SELECT p.batch_seq, s.sponsor_id, s.org_name, s.town, s.industry, e.ch_size_band,
               e.website, e.careers_url, p.persona, p.priority, p.status
          FROM pipeline p JOIN sponsors s USING(sponsor_id)

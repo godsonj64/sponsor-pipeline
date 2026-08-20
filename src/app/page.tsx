@@ -8,11 +8,8 @@ import { batchDates, progress, recentEvents, stats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
-export default function Dashboard() {
-  const s = stats();
-  const p = progress();
-  const dates = batchDates();
-  const events = recentEvents(14);
+export default async function Dashboard() {
+  const [s, p, dates, events] = await Promise.all([stats(), progress(), batchDates(), recentEvents(14)]);
   const funnelMax = Math.max(1, ...STATUSES.map((k) => p.funnel[k] ?? 0));
 
   return (

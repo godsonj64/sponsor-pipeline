@@ -2,7 +2,8 @@
  * Every read the app performs. Mirrors the queries the existing Flask UI and
  * `sponsor` CLI use, so both front ends agree on what the numbers mean.
  */
-import { all, count, one, today } from "./db";
+import { all, count, frag, one } from "./sql";
+import { today } from "./pipeline";
 
 export type BatchRow = {
   seq: number;
@@ -74,19 +75,21 @@ export type Vacancy = {
   in_uk: number | null;
 };
 
-export function stats() {
+export async function stats() {
   const s = {
-    sponsors: count("SELECT COUNT(*) n FROM sponsors"),
-    classified: count("SELECT COUNT(*) n FROM sponsors WHERE industry<>'unclassified'"),
-    verified: count("SELECT COUNT(*) n FROM enrichment WHERE ch_company_number IS NOT NULL"),
-    active: count("SELECT COUNT(*) n FROM enrichment WHERE ch_status='Active'"),
-    websites: count("SELECT COUNT(*) n FROM enrichment WHERE website IS NOT NULL"),
-    queued: count("SELECT COUNT(*) n FROM pipeline WHERE status='queued'"),
-    applied: count("SELECT COUNT(*) n FROM pipeline WHERE status='applied'"),
-    roles: count("SELECT COUNT(*) n FROM vacancies WHERE persona IS NOT NULL AND in_uk IS NOT 0"),
-    skilled: count("SELECT COUNT(*) n FROM sponsors WHERE has_skilled_worker=1"),
+    sponsors: await count("SELECT COUNT(*) n FROM sponsors"),
+    classified: await count("SELECT COUNT(*) n FROM sponsors WHERE industry<>'unclassified'"),
+    verified: await count("SELECT COUNT(*) n FROM enrichment WHERE ch_company_number IS NOT NULL"),
+    active: await count("SELECT COUNT(*) n FROM enrichment WHERE ch_status='Active'"),
+    websites: await count("SELECT COUNT(*) n FROM enrichment WHERE website IS NOT NULL"),
+    queued: await count("SELECT COUNT(*) n FROM pipeline WHERE status='queued'"),
+    applied: await count("SELECT COUNT(*) n FROM pipeline WHERE status='applied'"),
+    roles: await count(
+      `SELECT COUNT(*) n FROM vacancies WHERE persona IS NOT NULL AND ${frag.notZero("in_uk")}`,
+    ),
+    skilled: await count("SELECT COUNT(*) n FROM sponsors WHERE has_skilled_worker=1"),
   };
-  const by_status = all<{ status: string; n: number }>(
+  const by_status = await all<{ status: string; n: number }>(
     "SELECT status, COUNT(*) n FROM pipeline WHERE status IS NOT NULL GROUP BY status",
   );
   return { ...s, by_status, today: today() };
@@ -94,7 +97,9 @@ export function stats() {
 
 export function batchDates() {
   return all<{ d: string; n: number; applied: number; skipped: number }>(
-    `SELECT batch_date d, COUNT(*) n, SUM(status='applied') applied, SUM(status='skipped') skipped
+    `SELECT batch_date d, COUNT(*) n,
+            ${frag.sumIf("status='applied'")} applied,
+            ${frag.sumIf("status='skipped'")} skipped
        FROM pipeline WHERE batch_date IS NOT NULL GROUP BY batch_date ORDER BY batch_date DESC`,
   );
 }
@@ -102,12 +107,12 @@ export function batchDates() {
 export function batch(date: string) {
   return all<BatchRow>(
     `SELECT p.batch_seq seq, s.sponsor_id id, s.org_name name, s.town, s.industry, s.country,
-            p.persona, ROUND(p.priority,1) priority, p.status, p.role_target,
+            p.persona, ${frag.round1("p.priority")} priority, p.status, p.role_target,
             e.website, e.careers_url, e.ch_size_band size, e.ch_status, e.geo_verified geo, e.group_key,
             (SELECT COUNT(*) FROM pipeline p2 JOIN enrichment e2 USING(sponsor_id)
                WHERE p2.batch_date=p.batch_date AND e2.group_key=e.group_key) group_n,
             (SELECT COUNT(*) FROM vacancies v WHERE v.sponsor_id=s.sponsor_id
-               AND v.persona IS NOT NULL AND v.in_uk IS NOT 0) n_roles
+               AND v.persona IS NOT NULL AND ${frag.notZero("v.in_uk")}) n_roles
        FROM pipeline p JOIN sponsors s USING(sponsor_id)
        LEFT JOIN enrichment e USING(sponsor_id)
       WHERE p.batch_date=? ORDER BY p.batch_seq`,
@@ -115,8 +120,8 @@ export function batch(date: string) {
   );
 }
 
-export function sponsor(id: number) {
-  const row = one<SponsorDetail>(
+export async function sponsor(id: number) {
+  const row = await one<SponsorDetail>(
     `SELECT s.*, e.ch_official_name, e.ch_company_number, e.ch_status, e.ch_sic_desc,
             e.ch_size_band, e.ch_age_years, e.ch_address, e.website, e.careers_url,
             e.ats_type, e.ats_slug, e.geo_verified, e.web_confidence,
@@ -127,31 +132,31 @@ export function sponsor(id: number) {
     [id],
   );
   if (!row) return null;
-  return {
-    ...row,
-    routes: all<{ route: string; tier: string | null; rating: string | null }>(
+  const [routes, fit, vacancies, group, events] = await Promise.all([
+    all<{ route: string; tier: string | null; rating: string | null }>(
       "SELECT route, tier, rating FROM routes WHERE sponsor_id=? ORDER BY route",
       [id],
     ),
-    fit: all<{ persona: string; score: number }>(
+    all<{ persona: string; score: number }>(
       "SELECT persona, score FROM fit WHERE sponsor_id=? ORDER BY score DESC",
       [id],
     ),
-    vacancies: all<Vacancy>(
+    all<Vacancy>(
       `SELECT title, url, location, source, persona, match_score, in_uk
          FROM vacancies WHERE sponsor_id=? ORDER BY (persona IS NULL), match_score DESC, title`,
       [id],
     ),
-    group: groupSiblings(id),
-    events: all<{ ts: string; kind: string; detail: string | null }>(
+    groupSiblings(id),
+    all<{ ts: string; kind: string; detail: string | null }>(
       "SELECT ts, kind, detail FROM events WHERE sponsor_id=? ORDER BY event_id DESC LIMIT 20",
       [id],
     ),
-  };
+  ]);
+  return { ...row, routes, fit, vacancies, group, events };
 }
 
-export function groupSiblings(id: number) {
-  const key = one<{ group_key: string | null }>(
+export async function groupSiblings(id: number) {
+  const key = await one<{ group_key: string | null }>(
     "SELECT group_key FROM enrichment WHERE sponsor_id=?",
     [id],
   );
@@ -165,10 +170,9 @@ export function groupSiblings(id: number) {
   );
 }
 
-export function personas() {
-  return all<{ persona: string }>("SELECT DISTINCT persona FROM fit ORDER BY persona").map(
-    (r) => r.persona,
-  );
+export async function personas() {
+  const rows = await all<{ persona: string }>("SELECT DISTINCT persona FROM fit ORDER BY persona");
+  return rows.map((r) => r.persona);
 }
 
 export type PoolRow = {
@@ -186,7 +190,7 @@ export type PoolRow = {
 export function pool(persona: string, opts: { country?: string; limit?: number } = {}) {
   const params: unknown[] = [persona];
   let q = `SELECT s.sponsor_id id, s.org_name name, s.town, s.country, s.industry,
-                  e.ch_size_band size, ROUND(f.score,1) score, e.website
+                  e.ch_size_band size, ${frag.round1("f.score")} score, e.website
              FROM sponsors s JOIN fit f USING(sponsor_id)
              LEFT JOIN enrichment e USING(sponsor_id)
              LEFT JOIN pipeline p USING(sponsor_id)
@@ -198,7 +202,7 @@ export function pool(persona: string, opts: { country?: string; limit?: number }
     q += " AND s.country=?";
     params.push(opts.country);
   }
-  q += " ORDER BY f.score DESC, (s.sponsor_id*2654435761)%1000003 LIMIT ?";
+  q += ` ORDER BY f.score DESC, ${frag.shuffle("s.sponsor_id")} LIMIT ?`;
   params.push(Math.min(500, Math.max(1, opts.limit ?? 100)));
   return all<PoolRow>(q, params);
 }
@@ -224,7 +228,7 @@ export function search(term: string) {
             e.ch_status, e.ch_size_band size, e.website, p.status pstatus, p.batch_date
        FROM sponsors s LEFT JOIN enrichment e USING(sponsor_id)
        LEFT JOIN pipeline p USING(sponsor_id)
-      WHERE s.org_name LIKE ? OR e.ch_official_name LIKE ?
+      WHERE ${frag.like("s.org_name")} OR ${frag.like("e.ch_official_name")}
       ORDER BY s.org_name LIMIT 200`,
     [`%${t}%`, `%${t}%`],
   );
@@ -251,7 +255,7 @@ export function roles(opts: { persona?: string; includeNonUk?: boolean } = {}) {
              FROM vacancies v JOIN sponsors s USING(sponsor_id)
              LEFT JOIN pipeline p USING(sponsor_id)
             WHERE v.persona IS NOT NULL`;
-  if (!opts.includeNonUk) q += " AND v.in_uk IS NOT 0";
+  if (!opts.includeNonUk) q += ` AND ${frag.notZero("v.in_uk")}`;
   if (opts.persona) {
     q += " AND v.persona=?";
     params.push(opts.persona);
@@ -281,30 +285,32 @@ export function followups(days = 10) {
   return all<FollowUp>(
     `SELECT s.sponsor_id id, s.org_name name, s.town, p.status, p.persona, p.role_target,
             p.applied_at, p.batch_date, p.application_url, p.notes, e.website, e.careers_url,
-            CAST(julianday('now') - julianday(COALESCE(p.applied_at, p.batch_date)) AS INT) age
+            CAST(${frag.daysSince("COALESCE(p.applied_at, p.batch_date)")} AS INT) age
        FROM pipeline p JOIN sponsors s USING(sponsor_id)
        LEFT JOIN enrichment e USING(sponsor_id)
       WHERE (p.status='applied' AND p.applied_at IS NOT NULL
-               AND julianday('now') - julianday(p.applied_at) >= ?)
+               AND ${frag.daysSince("p.applied_at")} >= ?)
          OR (p.status='drafted' AND p.batch_date IS NOT NULL
-               AND julianday('now') - julianday(p.batch_date) >= 3)
+               AND ${frag.daysSince("p.batch_date")} >= 3)
       ORDER BY age DESC`,
     [days],
   );
 }
 
-export function progress() {
+export async function progress() {
   const funnel = Object.fromEntries(
-    all<{ status: string; n: number }>(
-      "SELECT status, COUNT(*) n FROM pipeline WHERE status IS NOT NULL GROUP BY status",
+    (
+      await all<{ status: string; n: number }>(
+        "SELECT status, COUNT(*) n FROM pipeline WHERE status IS NOT NULL GROUP BY status",
+      )
     ).map((r) => [r.status, r.n]),
-  );
+  ) as Record<string, number>;
   const sent = (funnel.applied ?? 0) + (funnel.replied ?? 0) + (funnel.rejected ?? 0);
   return {
     funnel,
     sent,
     reply_rate: sent ? Math.round((1000 * (funnel.replied ?? 0)) / sent) / 10 : 0,
-    by_persona: all<{
+    by_persona: await all<{
       persona: string;
       total: number;
       applied: number;
@@ -312,23 +318,29 @@ export function progress() {
       rejected: number;
       skipped: number;
     }>(
-      `SELECT persona, COUNT(*) total, SUM(status='applied') applied, SUM(status='replied') replied,
-              SUM(status='rejected') rejected, SUM(status='skipped') skipped
+      `SELECT persona, COUNT(*) total,
+              ${frag.sumIf("status='applied'")} applied,
+              ${frag.sumIf("status='replied'")} replied,
+              ${frag.sumIf("status='rejected'")} rejected,
+              ${frag.sumIf("status='skipped'")} skipped
          FROM pipeline WHERE persona IS NOT NULL GROUP BY persona ORDER BY total DESC`,
     ),
-    by_industry: all<{ industry: string; total: number; applied: number; replied: number }>(
-      `SELECT s.industry, COUNT(*) total, SUM(p.status='applied') applied,
-              SUM(p.status='replied') replied
+    by_industry: await all<{ industry: string; total: number; applied: number; replied: number }>(
+      `SELECT s.industry, COUNT(*) total,
+              ${frag.sumIf("p.status='applied'")} applied,
+              ${frag.sumIf("p.status='replied'")} replied
          FROM pipeline p JOIN sponsors s USING(sponsor_id)
         GROUP BY s.industry ORDER BY applied DESC, total DESC LIMIT 12`,
     ),
-    daily: all<{ d: string; n: number }>(
+    daily: await all<{ d: string; n: number }>(
       `SELECT substr(ts,1,10) d, COUNT(*) n FROM events
-        WHERE kind='status' AND detail='applied' GROUP BY d ORDER BY d DESC LIMIT 30`,
+        WHERE kind='status' AND detail='applied' GROUP BY substr(ts,1,10) ORDER BY d DESC LIMIT 30`,
     ),
-    batches: all<{ d: string; n: number; applied: number; worked: number; sites: number }>(
-      `SELECT p.batch_date d, COUNT(*) n, SUM(p.status='applied') applied,
-              SUM(p.status<>'queued') worked, SUM(e.website IS NOT NULL) sites
+    batches: await all<{ d: string; n: number; applied: number; worked: number; sites: number }>(
+      `SELECT p.batch_date d, COUNT(*) n,
+              ${frag.sumIf("p.status='applied'")} applied,
+              ${frag.sumIf("p.status<>'queued'")} worked,
+              ${frag.sumIf("e.website IS NOT NULL")} sites
          FROM pipeline p LEFT JOIN enrichment e USING(sponsor_id)
         WHERE p.batch_date IS NOT NULL GROUP BY p.batch_date ORDER BY p.batch_date DESC LIMIT 20`,
     ),

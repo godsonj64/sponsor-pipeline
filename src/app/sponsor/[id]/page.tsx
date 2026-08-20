@@ -18,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const s = sponsor(Number(id));
+  const s = await sponsor(Number(id));
   return { title: s?.org_name ?? "Sponsor" };
 }
 
@@ -26,7 +26,7 @@ export default async function SponsorPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const n = Number(id);
   if (!Number.isInteger(n) || n <= 0) notFound();
-  const s = sponsor(n);
+  const s = await sponsor(n);
   if (!s) notFound();
 
   return (

@@ -63,8 +63,62 @@ The job runner (`/api/run` in the Flask UI, which shells out to `discover.py`,
 runs stay with the Python tooling. Use the CLI or the existing Flask UI on
 port 8710 for discovery and vacancy pulls, then refresh this app to see results.
 
-## Hosting
+## Storage: two engines, one query layer
 
-This reads SQLite from local disk, so it runs locally rather than on Vercel —
-serverless has no persistent local file. Hosting it would mean moving
-`sponsors.db` into Postgres first.
+`src/lib/sql.ts` speaks to either engine behind one interface:
+
+- **SQLite** — the pipeline's own `sponsors.db`. Used whenever `DATABASE_URL` is
+  unset, so local development keeps sharing one file with the Python tooling.
+- **Postgres** — used the moment `DATABASE_URL` is set. This is the hosted path,
+  where there is no local disk to read.
+
+Queries are written once with `?` placeholders. Where the dialects genuinely
+differ — counting with a filter, date arithmetic, case-insensitive LIKE, the
+tie-break shuffle that would overflow int4 — `frag` in `sql.ts` emits the right
+form for the active engine. Nothing above the storage layer knows which is live.
+
+## Access control
+
+Setting `SPONSOR_PASSWORD` turns on a single-password gate covering every page
+and API route, backed by an HMAC-signed cookie (`src/lib/session.ts`). With no
+password set the app is open, which is the right default on localhost and the
+wrong one anywhere else — **always set it before deploying.**
+
+## Deploying to Vercel
+
+1. **Push to GitHub**, then import the repo at [vercel.com/new](https://vercel.com/new).
+
+2. **Attach a database.** Project → Storage → create a Neon/Vercel Postgres
+   store. That sets `DATABASE_URL` for you.
+
+3. **Set the remaining environment variables** (Settings → Environment Variables):
+
+   ```
+   SPONSOR_PASSWORD=<the password you will type to get in>
+   SESSION_SECRET=<openssl rand -base64 32>
+   ```
+
+4. **Load the data.** From your machine, with the same connection string:
+
+   ```bash
+   DATABASE_URL='postgres://…' node scripts/migrate-to-postgres.mjs
+   ```
+
+   It creates the schema and copies all ~607k rows. It refuses to run against a
+   database that already holds data; pass `--fresh` to replace what is there.
+
+5. **Redeploy**, then sign in with your password.
+
+Note that the hosted copy and your local `sponsors.db` are now separate
+databases. Discovery and vacancy runs still write to the local file, so re-run
+the migration with `--fresh` when you want the hosted copy to catch up.
+
+## Tests
+
+Both engines are covered end to end. The Postgres path is exercised against a
+real Postgres served over TCP by PGlite, so no database install is needed:
+
+```bash
+node scripts/test-pg-server.mjs 5433 &
+DATABASE_URL=postgres://postgres@127.0.0.1:5433/postgres node scripts/migrate-to-postgres.mjs
+```

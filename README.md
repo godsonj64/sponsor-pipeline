@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sponsor pipeline — web app
 
-## Getting Started
+A browser front end for the UK sponsor-register pipeline: daily batches, persona
+fit, live vacancies, and application tracking, over the same `sponsors.db` the
+Python CLI and Flask UI already use.
 
-First, run the development server:
+Next.js (App Router) + TypeScript + Tailwind v4, sharing the design language of
+the SonicAI site.
+
+## Running it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev -- -p 3100
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3100.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The database is found automatically at `../resumes/sponsors.db`. Point
+`SPONSORS_DB` at it if your layout differs.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Pages
 
-## Learn More
+| Page | Route | What it does |
+| --- | --- | --- |
+| Dashboard | `/` | Register totals, the seven-status funnel, persona and industry breakdowns, recent batches, activity feed |
+| Daily batch | `/batch?date=YYYY-MM-DD` | The day's employers with a live detail panel: set status, edit role target, application URL and notes |
+| Target pool | `/pool?persona=…` | Unworked sponsors ranked by persona fit; queue one, or take the top N onto a date |
+| Live roles | `/roles?persona=…` | Vacancies found on career pages, scored against your personas |
+| Follow-ups | `/followups?days=10` | Applications gone quiet, and drafts that stalled; change status inline |
+| Search | `/search?q=…` | All 127k sponsors by display name or Companies House name |
+| Sponsor | `/sponsor/:id` | Full record: Companies House, routes, persona fit, vacancies, group siblings, history |
 
-To learn more about Next.js, take a look at the following resources:
+## API
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+POST /api/status     { id, status }              set pipeline status
+POST /api/field      { id, field, value }        edit a whitelisted pipeline field
+POST /api/queue      { id, date, persona? }      add one employer to a batch date
+POST /api/take       { n, persona, date }        queue the top N unworked targets
+GET  /api/sponsor/:id                            full record as JSON
+GET  /api/export?what=batch|applications|roles   CSV download
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Notes on the data
 
-## Deploy on Vercel
+- **Shared database.** The Python CLI, the Flask UI and this app all write to the
+  same file. Writes here take the lock up front (`BEGIN IMMEDIATE`) with a 15s
+  busy timeout, matching `pipeline/ui.py`, so a running discovery job doesn't
+  turn a click into a `SQLITE_BUSY` error.
+- **Same queries.** `src/lib/queries.ts` mirrors the SQL in `pipeline/ui.py`, so
+  both front ends report identical numbers.
+- **Audit trail.** Status and field changes append to the `events` table the
+  Python side also writes, so history stays in one place.
+- **Status rules.** Setting `applied` stamps `applied_at`; moving back to
+  `queued`/`researched`/`drafted` clears it, so the follow-up tracker never
+  chases an application that was not actually sent.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Not ported
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The job runner (`/api/run` in the Flask UI, which shells out to `discover.py`,
+`vacancies.py`, `reconcile.py` and `groups.py`) is deliberately not here — those
+runs stay with the Python tooling. Use the CLI or the existing Flask UI on
+port 8710 for discovery and vacancy pulls, then refresh this app to see results.
+
+## Hosting
+
+This reads SQLite from local disk, so it runs locally rather than on Vercel —
+serverless has no persistent local file. Hosting it would mean moving
+`sponsors.db` into Postgres first.

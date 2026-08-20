@@ -1,26 +1,337 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   SonicAI design tokens — light, airy, near-white canvas with pastel blooms
+   and a peach → pink → violet accent ramp used for every emphasis surface.
+   --------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #0e0e11;
+  --ink-2: #3a3a42;
+  --ink-soft: #6e6e78;
+  --ink-faint: #9b9ba4;
+
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --surface-3: #ececee;
+
+  --line: rgba(14, 14, 17, 0.09);
+  --line-strong: rgba(14, 14, 17, 0.16);
+
+  --accent-peach: #ff9d5c;
+  --accent-coral: #ff6b6b;
+  --accent-pink: #ff4fa3;
+  --accent-magenta: #e252d8;
+  --accent-violet: #8b5cf6;
+  --accent-blue: #5b8def;
+
+  --radius-card: 22px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(14, 14, 17, 0.05);
+  --shadow-md: 0 6px 24px -8px rgba(14, 14, 17, 0.14);
+  --shadow-lg: 0 24px 60px -24px rgba(14, 14, 17, 0.24);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-peach: var(--accent-peach);
+  --color-coral: var(--accent-coral);
+  --color-pink: var(--accent-pink);
+  --color-magenta: var(--accent-magenta);
+  --color-violet: var(--accent-violet);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The pastel bloom that bleeds in from the page edges in the design. */
+.page-bloom::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(38rem 30rem at -8% 2%, rgba(255, 157, 92, 0.13), transparent 60%),
+    radial-gradient(34rem 28rem at 106% 0%, rgba(226, 82, 216, 0.11), transparent 58%),
+    radial-gradient(40rem 32rem at 2% 100%, rgba(255, 79, 163, 0.12), transparent 60%),
+    radial-gradient(36rem 30rem at 100% 98%, rgba(139, 92, 246, 0.11), transparent 60%);
+}
+
+/* --- type ---------------------------------------------------------------- */
+.display {
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  font-weight: 600;
+}
+
+.text-gradient {
+  background: linear-gradient(96deg, var(--accent-peach) 2%, var(--accent-coral) 34%, var(--accent-pink) 66%, var(--accent-magenta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- surfaces ------------------------------------------------------------ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+.panel {
+  background: var(--surface-2);
+  border-radius: 26px;
+}
+
+/* Gradient-ring container, as on the hero composer and the centre voice tile. */
+.ring-gradient {
+  position: relative;
+  border-radius: 20px;
+  background: linear-gradient(120deg, var(--accent-violet), var(--accent-pink) 42%, var(--accent-peach) 78%, var(--accent-coral));
+  padding: 1.5px;
+}
+
+.ring-gradient > * {
+  border-radius: 18.5px;
+  background: var(--surface);
+}
+
+/* --- controls ------------------------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 0.625rem 1.125rem;
+  transition: transform 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-dark {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-dark:hover {
+  background: #26262e;
+}
+
+.btn-light {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+
+.btn-light:hover {
+  background: var(--surface-2);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 0.3125rem 0.6875rem;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  background: var(--surface);
+  transition: border-color 0.16s ease, color 0.16s ease, background-color 0.16s ease;
+}
+
+.chip[data-active="true"] {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.field {
+  /* No forced width: callers size it (w-full, w-auto, flex-1) so narrow
+     controls like a day-count box stay narrow. */
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 0.6875rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.field:focus {
+  border-color: rgba(255, 79, 163, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 79, 163, 0.12);
+}
+
+.field::placeholder {
+  color: var(--ink-faint);
+}
+
+/* --- motion -------------------------------------------------------------- */
+@keyframes bar {
+  0%, 100% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::selection {
+  background: rgba(255, 79, 163, 0.2);
+}
+
+/* ---------------------------------------------------------------------------
+   Pipeline-specific surfaces: status colouring, data tables, sparklines.
+   --------------------------------------------------------------------------- */
+:root {
+  --st-queued: #9b9ba4;
+  --st-researched: #5b8def;
+  --st-drafted: #8b5cf6;
+  --st-applied: #ff4fa3;
+  --st-replied: #16a34a;
+  --st-rejected: #b45309;
+  --st-skipped: #c4c4cc;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-pill);
+  padding: 0.1875rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.status::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status[data-s="queued"] { color: var(--st-queued); }
+.status[data-s="researched"] { color: var(--st-researched); background: rgba(91, 141, 239, 0.1); }
+.status[data-s="drafted"] { color: var(--st-drafted); background: rgba(139, 92, 246, 0.1); }
+.status[data-s="applied"] { color: var(--st-applied); background: rgba(255, 79, 163, 0.1); }
+.status[data-s="replied"] { color: var(--st-replied); background: rgba(22, 163, 74, 0.1); }
+.status[data-s="rejected"] { color: var(--st-rejected); background: rgba(180, 83, 9, 0.1); }
+.status[data-s="skipped"] { color: var(--st-skipped); }
+
+/* Data tables: quiet rules, generous rows, sticky header. */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink-faint);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.table tbody tr[data-selected="true"] {
+  background: var(--surface-2);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s ease;
+}
+
+.link:hover {
+  text-decoration-color: var(--accent-pink);
 }

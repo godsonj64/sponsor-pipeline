@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "",
   "buildCommand": "node sponsor-atlas/scripts/build.js",
   "outputDirectory": "sponsor-atlas/public",
   "functions": {

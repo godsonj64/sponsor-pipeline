@@ -1,0 +1,1 @@
+module.exports = require('../sponsor-atlas/api/register.js');

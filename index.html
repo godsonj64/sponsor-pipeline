@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Search the official UK Worker and Temporary Worker sponsor register with fast filters, stable employer profiles, and live register freshness." />
+  <title>SponsorAtlas — UK Worker Sponsor Directory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="site">
+  <header class="nav">
+    <div class="shell navInner">
+      <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>SponsorAtlas</a>
+      <nav class="navlinks" aria-label="Primary navigation">
+        <a href="#directory">Directory</a>
+        <a href="#method">How it works</a>
+        <a href="#source">Data source</a>
+      </nav>
+      <a class="btn dark" href="#directory">Find a sponsor</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="shell heroInner">
+        <div class="eyebrowRow">
+          <span class="eyebrow"><span data-org-count>—</span> organisations</span>
+          <span class="eyebrow">Official register updated <span data-updated>—</span></span>
+        </div>
+        <h1>Find UK employers licensed to <span class="gradientText">sponsor workers.</span></h1>
+        <p class="heroCopy">Search the Worker and Temporary Worker sponsor register by employer, location and visa route without downloading or fighting a spreadsheet.</p>
+
+        <div class="searchPanel" role="search" aria-label="Sponsor directory search">
+          <div class="searchRow">
+            <label class="fieldWrap">
+              <span>Employer</span>
+              <input id="q" class="field" placeholder="e.g. NHS, Deloitte, engineering" autocomplete="off" />
+            </label>
+            <label class="fieldWrap">
+              <span>Town or county</span>
+              <input id="town" class="field" placeholder="e.g. London" autocomplete="off" />
+            </label>
+            <label class="fieldWrap">
+              <span>Visa route</span>
+              <select id="route" class="field"><option value="">All routes</option></select>
+            </label>
+            <button id="searchButton" class="btn dark searchButton" type="button">Search</button>
+          </div>
+          <div class="searchFooter">
+            <span id="searchHint">Results use the latest register available from GOV.UK.</span>
+            <button id="clearFilters" class="textButton" type="button">Clear filters</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="directory">
+      <div class="sectionHead">
+        <div>
+          <span class="eyebrow">Sponsor directory</span>
+          <h2>Search the register, then open a stable employer profile.</h2>
+        </div>
+        <p>A sponsor licence means an organisation is authorised to sponsor eligible workers. It does not guarantee that the employer is hiring, that a specific role is sponsorable, or that sponsorship will be offered.</p>
+      </div>
+
+      <div class="directory">
+        <div class="directoryTop">
+          <div>
+            <strong id="resultCount">Loading register…</strong>
+            <span id="activeFilters" class="subtle"></span>
+          </div>
+          <div class="directoryControls">
+            <label>Sort
+              <select id="sort" class="control">
+                <option value="name">Name A–Z</option>
+                <option value="town">Location A–Z</option>
+                <option value="routes">Most routes</option>
+              </select>
+            </label>
+            <label>Rows
+              <select id="pageSize" class="control">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="row head" aria-hidden="true">
+          <span>Employer</span><span>Location</span><span>Licensed routes</span><span>Source</span><span></span>
+        </div>
+        <div id="rows" class="rows" aria-live="polite"></div>
+        <div class="pagination">
+          <span id="pageInfo">Page 1 of 1</span>
+          <div class="paginationButtons">
+            <button id="prev" class="btn" type="button">Previous</button>
+            <button id="next" class="btn" type="button">Next</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="method">
+      <div class="shell">
+        <div class="stats">
+          <div class="stat"><strong data-org-count>—</strong><span>organisations in the current register snapshot</span></div>
+          <div class="stat"><strong data-licence-count>—</strong><span>licence-route records</span></div>
+          <div class="stat"><strong>Stable IDs</strong><span>employer URLs stay consistent across register refreshes</span></div>
+        </div>
+
+        <div class="featureGrid">
+          <article class="feature">
+            <span class="eyebrow">Fast discovery</span>
+            <h3>Filter by what actually matters.</h3>
+            <p>Employer name, town, county and licensed route remain independently searchable. Filters are preserved in the URL so a search can be bookmarked or shared.</p>
+          </article>
+          <article class="feature" id="source">
+            <span class="eyebrow">Live source</span>
+            <h3>Refreshes from GOV.UK automatically.</h3>
+            <p>SponsorAtlas checks the official UK Visas and Immigration publication for the latest CSV and refreshes browser storage only when the source snapshot changes.</p>
+            <a class="inlineLink" href="https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers" target="_blank" rel="noopener noreferrer">Open the official register ↗</a>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer shell">
+    <span>SponsorAtlas is an independent discovery interface and is not affiliated with the UK Government.</span>
+    <span>Source: UK Visas and Immigration · updated <span data-updated>—</span></span>
+  </footer>
+</div>
+<script src="/db.js"></script>
+<script src="/app.js" defer></script>
+</body>
+</html>

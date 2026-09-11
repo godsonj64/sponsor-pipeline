@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Search the official UK Worker and Temporary Worker sponsor register with persistent filters and structured employer profiles." />
+  <meta name="theme-color" content="#ffffff" />
+  <title>SponsorAtlas — UK Sponsor Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<a class="skipLink" href="#directory">Skip to sponsor directory</a>
+<div class="site">
+  <header class="nav">
+    <div class="shell navInner">
+      <a class="brand" href="./index.html" aria-label="SponsorAtlas home"><span class="mark" aria-hidden="true"></span>SponsorAtlas</a>
+      <nav class="navlinks" aria-label="Primary navigation">
+        <a href="#directory">Directory</a><a href="#data">Data</a><a href="#verification">Verification</a><a href="#about">About</a>
+      </nav>
+      <div class="navActions"><a class="btn" href="#data">Data source</a><a class="btn dark" href="#directory">Find a sponsor</a></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="shell">
+        <span class="eyebrow"><span data-org-count>—</span>&nbsp;licensed organisations · official register <span data-snapshot-date></span></span>
+        <h1>Find UK employers that can <span class="gradientText">sponsor talent.</span></h1>
+        <p>Search the official Worker and Temporary Worker sponsor register through a faster, clearer directory. Filter by employer, location and visa route, then open a shareable employer profile.</p>
+        <div class="heroActions"><a class="btn dark" href="#directory">Explore employers</a><a class="btn" href="#data">How the data works</a></div>
+
+        <form id="searchForm" class="searchPanel" role="search" novalidate>
+          <div class="searchRow">
+            <label class="srOnly" for="q">Employer name</label>
+            <input id="q" class="field" placeholder="Search employer or organisation name" autocomplete="off" />
+            <label class="srOnly" for="town">Town or city</label>
+            <input id="town" class="field" placeholder="Town or city" autocomplete="off" />
+            <label class="srOnly" for="route">Visa route</label>
+            <select id="route" class="field"><option value="">All visa routes</option></select>
+            <button id="searchButton" class="btn dark searchButton" type="submit">Search</button>
+          </div>
+          <div class="searchMeta">
+            <span>Filters stay in the URL, so a result set can be bookmarked or shared.</span>
+            <button id="clearFilters" class="textButton" type="button" hidden>Clear filters</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="section shell" id="directory" aria-labelledby="directoryTitle">
+      <div class="sectionHead">
+        <div><span class="eyebrow">Sponsor directory</span><h2 id="directoryTitle" class="mt14">Search the register without fighting a spreadsheet.</h2></div>
+        <p>Results come from the latest official register fetched by SponsorAtlas. Employer profiles preserve source provenance and keep third-party enrichment separate from government data.</p>
+      </div>
+      <div class="directory">
+        <div class="directoryTop">
+          <span id="resultCount" aria-live="polite">Loading official register…</span>
+          <div class="directoryControls">
+            <label class="srOnly" for="sort">Sort results</label>
+            <select id="sort" class="btn soft"><option value="name">Name A–Z</option><option value="town">Town A–Z</option></select>
+          </div>
+        </div>
+        <div class="row head" aria-hidden="true"><span>Employer</span><span>Location</span><span>Visa route</span><span>Source</span><span></span></div>
+        <div id="rows" class="rows" aria-live="polite" aria-busy="true"></div>
+        <div class="pagination">
+          <span id="pageInfo">Page 1 of 1</span>
+          <div class="paginationButtons"><button id="prev" class="btn" type="button">Previous</button><button id="next" class="btn" type="button">Next</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="data"><div class="shell">
+      <div class="stats">
+        <div class="stat"><strong data-licence-count>—</strong><span>Licence records in the current register</span></div>
+        <div class="stat"><strong>Live source</strong><span>Latest GOV.UK Worker and Temporary Worker register</span></div>
+        <div class="stat"><strong>Persistent</strong><span>Browser cache with refresh when the official source changes</span></div>
+      </div>
+      <div class="featureGrid">
+        <article class="feature">
+          <span class="eyebrow">Structured discovery</span><h3 class="mt16">Built for search, not scrolling.</h3>
+          <p>Employer name, location and visa route remain independently filterable. Search state is encoded in the URL, and stable employer identifiers avoid links changing just because the official CSV is reordered.</p>
+          <div class="visualGlow" aria-hidden="true"></div>
+          <div class="miniStack"><div class="miniCard"><strong>Search by route</strong>Skilled Worker · Global Business Mobility · Temporary Worker</div><div class="miniCard"><strong>Share the result</strong>Filters and employer profiles have durable URLs.</div></div>
+        </article>
+        <article class="feature" id="verification">
+          <span class="eyebrow">Source separation</span><h3 class="mt16">Official sponsorship data stays authoritative.</h3>
+          <p>SponsorAtlas labels Home Office fields separately from external company, website and location checks. A sponsor licence does not automatically mean a website, Companies House match or current vacancy has been independently verified.</p>
+          <div class="verificationStack"><div class="miniCard"><strong>01 · GOV.UK register</strong>Organisation, location, route and sponsorship rating</div><div class="miniCard"><strong>02 · Companies House</strong>Optional company lookup by organisation name</div><div class="miniCard"><strong>03 · Web & location</strong>Separate enrichment, never presented as official register data</div></div>
+        </article>
+      </div>
+    </div></section>
+
+    <section class="section shell" id="about"><div class="sectionHead"><h2>Useful for discovery. Not a guarantee of a vacancy or visa outcome.</h2><p>SponsorAtlas is an independent discovery interface. Always confirm an employer and any role directly before applying. Sponsor licence status can change when the government register is updated.</p></div></section>
+  </main>
+
+  <footer class="footer shell"><span>Independent UK sponsor-register discovery interface. Not affiliated with the UK Government.</span><span>Source: UK Visas and Immigration · <span data-snapshot-date>latest available</span></span></footer>
+</div>
+<script src="./db.js"></script>
+<script src="./app.js" defer></script>
+</body>
+</html>
